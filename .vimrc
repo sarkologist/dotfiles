@@ -59,6 +59,7 @@ nnoremap <F5> :GundoToggle<CR>
 Plugin 'haya14busa/incsearch.vim'
 map /  <Plug>(incsearch-forward)
 map ?  <Plug>(incsearch-backward)
+map g/ <Plug>(incsearch-stay)
 
 " switch off highlighting after done with search/navigation
 set hlsearch
