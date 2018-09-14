@@ -1,0 +1,31 @@
+[diff]
+  tool = bcomp
+[difftool]
+  prompt = false
+[difftool "bcomp"]
+  trustExitCode = true
+  cmd = "/usr/local/bin/bcomp" \"$LOCAL\" \"$REMOTE\"
+[merge]
+  tool = bcomp
+[mergetool]
+  prompt = false
+[mergetool "bcomp"]
+  trustExitCode = true
+  cmd = "/usr/local/bin/bcomp" \"$LOCAL\" \"$REMOTE\" \"$BASE\" \"$MERGED\"
+[alias]
+	s = status
+	c = checkout
+	m = commit
+	d = diff
+	dt = difftool
+	mt = mergetool
+	l = log --oneline --decorate --graph
+	f = fetch
+	b = branch
+	dtc = git difftool --cached
+	dtc = difftool --cached
+[user]
+	name = guo liang
+	email = guoliang.oon@teralytics.ch
+[core]
+	editor = vim
