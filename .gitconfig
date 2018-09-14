@@ -33,3 +33,6 @@
 [branch]
 	autosetuprebase = always
 [difftool "bc3"]
+[user]
+	name = Oon Guo Liang
+	email = oon.guo.liang@gmail.com
