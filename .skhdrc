@@ -1,3 +1,4 @@
+
 # focus window
 fn - h : chunkc tiling::window --focus west
 fn - j : chunkc tiling::window --focus south
@@ -50,9 +51,10 @@ fn + cmd - 0 : chunkc tiling::desktop --equalize
 # rotate tree
 fn - r : chunkc tiling::desktop --rotate 90
 # mirror tree y-axis
-fn + shift - y : chunkc tiling::desktop --mirror vertical
+fn - y : chunkc tiling::desktop --mirror vertical
 # mirror tree x-axis
-fn + shift - x : chunkc tiling::desktop --mirror horizontal
+fn - x : chunkc tiling::desktop --mirror horizontal
+
 # toggle window fullscreen
 fn - f : chunkc tiling::window --toggle fullscreen
 # toggle window parent zoom
@@ -62,13 +64,15 @@ fn - s : chunkc tiling::window --toggle split
 # float / unfloat window
 fn - t : chunkc tiling::window --toggle float
 
+
+
 # float next window to be tiled
 shift + alt - t : chunkc set window_float_next 1
 
 # change layout of desktop
 ctrl + cmd - b : chunkc tiling::desktop --layout bsp
 ctrl + cmd - m : chunkc tiling::desktop --layout monocle
-ctrl + cmd - f : chunkc tiling::desktop --layout float
+# ctrl + cmd - f : chunkc tiling::desktop --layout float
 
 ctrl + alt - w : chunkc tiling::desktop --deserialize ~/.chunkwm_layouts/dev_1
 
@@ -95,6 +99,7 @@ ctrl + alt - w : chunkc tiling::desktop --deserialize ~/.chunkwm_layouts/dev_1
 # ctrl + cmd - 2  : chunkc tiling::window --send-to-monitor 2; chunkc tiling::monitor -f 2
 # ctrl + cmd - 3  : chunkc tiling::window --send-to-monitor 3; chunkc tiling::monitor -f 3
 
+
 # toggle sticky, float and resize to picture-in-picture size
 # ctrl + shift - s : chunkc tiling::window --toggle sticky;\
 #           chunkc tiling::window --warp-floating pip-right
@@ -104,10 +109,8 @@ ctrl + alt - w : chunkc tiling::desktop --deserialize ~/.chunkwm_layouts/dev_1
 
 # toggle window native fullscreen
 # shift + alt - f : chunkc tiling::window --toggle native-fullscreen
-
 # cmd - j : chunkc tiling::window --focus prev
 # cmd - k : chunkc tiling::window --focus next
-
 #  NOTE(koekeishiya): A list of all built-in modifier and literal keywords can
 #                     be found at https://github.com/koekeishiya/skhd/issues/1
 #
@@ -144,5 +147,4 @@ ctrl + alt - w : chunkc tiling::desktop --deserialize ~/.chunkwm_layouts/dev_1
 # cmd - return : open -na /Applications/Kitty.app
 
 # close focused window
-# alt - w : chunkc tiling::window --close
-
+# ctrl + shift - w : chunkc tiling::window --close
