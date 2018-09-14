@@ -105,5 +105,7 @@ chunkc tiling::rule --owner Finder --name Copy --state float
 chunkc tiling::rule --owner Dash --state float
 chunkc tiling::rule --owner Quiver --state float
 chunkc tiling::rule --owner Tweetbot --state float
+chunkc tiling::rule --owner Dictionary --state float
+chunkc tiling::rule --owner \"Google Chrome\" --name \"Tabs Outliner\" --state float
 chunkc tiling::rule --owner \"Beyond Compare\" --state float
 chunkc tiling::rule --owner \"App Store\" --state float
