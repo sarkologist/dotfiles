@@ -1,0 +1,63 @@
+#!/bin/bash
+
+set -uo pipefail
+
+otd="/Applications/OpenTabletDriver.app/Contents/MacOS/OpenTabletDriver.Console"
+tablet="Wacom CTL-470"
+max_width="147.2"
+max_height="92"
+center_x="73.6"
+center_y="46"
+
+if [[ ! -x "$otd" ]]; then
+    /usr/bin/osascript -e 'display notification "OpenTabletDriver is not installed" with title "Wacom display toggle"' >/dev/null 2>&1
+    exit 1
+fi
+
+current_state="$({
+    printf 'listdisplays\n'
+    printf 'getareas "%s"\n' "$tablet"
+} | "$otd" stdio 2>/dev/null)"
+
+if ! /usr/bin/grep -q '^1:' <<<"$current_state"; then
+    /usr/bin/osascript -e 'display notification "A second display is not connected" with title "Wacom display toggle"' >/dev/null 2>&1
+    exit 1
+fi
+
+current_dims="$(/usr/bin/sed -n 's/^Display area: \[\([0-9.]*x[0-9.]*\).*/\1/p' <<<"$current_state")"
+tablet_rotation="$(/usr/bin/sed -n 's/^Tablet area: .*:\([-0-9.]*\)°].*/\1/p' <<<"$current_state")"
+if [[ -z "$tablet_rotation" ]]; then
+    /usr/bin/osascript -e 'display notification "Could not read the current tablet rotation" with title "Wacom display toggle"' >/dev/null 2>&1
+    exit 1
+fi
+display0_dims="$(/usr/bin/sed -n 's/^0: Display 0 (\([0-9.]*x[0-9.]*\).*/\1/p' <<<"$current_state")"
+
+if [[ "$current_dims" == "$display0_dims" ]]; then
+    target_index="1"
+else
+    target_index="0"
+fi
+
+target_dims="$(/usr/bin/sed -n "s/^${target_index}: Display ${target_index} (\\([0-9.]*x[0-9.]*\\).*/\\1/p" <<<"$current_state")"
+screen_width="${target_dims%x*}"
+screen_height="${target_dims#*x}"
+
+read -r tablet_width tablet_height <<<"$(/usr/bin/awk -v sw="$screen_width" -v sh="$screen_height" -v tw="$max_width" -v th="$max_height" 'BEGIN {
+    screen_ratio = sw / sh
+    tablet_ratio = tw / th
+    if (screen_ratio > tablet_ratio) {
+        printf "%.3f %.3f", tw, tw / screen_ratio
+    } else {
+        printf "%.3f %.3f", th * screen_ratio, th
+    }
+}')"
+
+{
+    printf 'maptodisplayindex "%s" %s\n' "$tablet" "$target_index"
+    printf 'settabletarea "%s" %s %s %s %s %s\n' "$tablet" "$tablet_width" "$tablet_height" "$center_x" "$center_y" "$tablet_rotation"
+    printf 'setlockaspectratio "%s" true\n' "$tablet"
+    printf 'setenableclipping "%s" true\n' "$tablet"
+    printf 'savedefaultsettings\n'
+} | "$otd" stdio >/dev/null
+
+/usr/bin/osascript -e "display notification \"Mapped to display $((target_index + 1)) ($target_dims)\" with title \"Wacom tablet\"" >/dev/null 2>&1
