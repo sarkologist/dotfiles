@@ -311,7 +311,7 @@ wacomScrollTap = hs.eventtap.new({
   return true
 end):start()
 
-
+slimbladeHandedness = require("slimblade")
 
 -- All set
-hs.alert.show("Hammerspoon — Wacom hold-to-scroll enabled")
+hs.alert.show("Hammerspoon — input-device shortcuts enabled")

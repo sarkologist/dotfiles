@@ -9,6 +9,8 @@ database in an opaque, machine-specific format.
 
 - `~/.hammerspoon/init.lua` — pen scrolling and display switching, plus the
   existing Hammerspoon window-management configuration.
+- `~/.hammerspoon/slimblade.lua` — switches the SlimBlade's `Default` setting
+  between the left- and right-hand presets.
 - `~/.local/bin/toggle-wacom-display` — switches the tablet between connected
   displays while preserving its tablet area and 180-degree rotation.
 - `~/Library/Application Support/OpenTabletDriver/settings.json` — live
@@ -74,15 +76,26 @@ This is the geometric mirror of the right-hand preset.
 | Bottom right + upper right | Command-Shift-4 |
 | Upper left + upper right | Mission Control |
 
+### Switching handedness
+
+- Press **Control-Option-Command-H** to toggle between the left- and
+  right-hand presets.
+- Connecting the Wacom switches the SlimBlade to left-hand mode; disconnecting
+  it switches back to right-hand mode.
+
+The Hammerspoon automation imports only SteerMouse's `Default` application
+setting, so settings for Anki, Chrome, and other individual applications are
+left alone. SteerMouse briefly opens during a switch, then focus returns to the
+application you were using.
+
 ## Restore
 
 1. Install OpenTabletDriver, Hammerspoon, and SteerMouse.
 2. Restore the tracked files into the paths above.
 3. Restart OpenTabletDriver so it reloads `settings.json`.
 4. Give Hammerspoon Accessibility permission, start it, and reload its config.
-5. In SteerMouse, select SlimBlade Pro, click **Edit**, select **Default**, open
-   the action menu, choose **Import**, and import the desired
-   `.smsetting_app` file. Confirm replacing `Default`.
+5. Connect or disconnect the Wacom, or press **Control-Option-Command-H**, to
+   import the appropriate SlimBlade preset automatically.
 
 SteerMouse does not provide general-purpose named presets. Importing one of these
 exports replaces the selected application setting; keep both exports current
