@@ -9,10 +9,12 @@ database in an opaque, machine-specific format.
 
 - `~/.hammerspoon/init.lua` — pen scrolling and display switching, plus the
   existing Hammerspoon window-management configuration.
+- `~/.hammerspoon/wacom-display.lua` — fast display switching over a persistent
+  OpenTabletDriver CLI connection.
 - `~/.hammerspoon/slimblade.lua` — switches the SlimBlade's `Default` setting
   between the left- and right-hand presets.
-- `~/.local/bin/toggle-wacom-display` — switches the tablet between connected
-  displays while preserving its tablet area and 180-degree rotation.
+- `~/.local/bin/toggle-wacom-display` and `toggle-wacom-display.py` — standalone
+  fallback for switching displays while preserving rotation and aspect ratio.
 - `~/Library/Application Support/OpenTabletDriver/settings.json` — live
   OpenTabletDriver settings.
 - `~/.config/input-devices/steermouse/*.smsetting_app` — importable SlimBlade
@@ -35,6 +37,16 @@ identifiers.
 
 The Hammerspoon event filter accepts only events emitted by OpenTabletDriver, so
 the pen gesture does not consume SlimBlade button chords.
+
+The display shortcut keeps one OpenTabletDriver console process running and
+reads the live mapping and rotation before each switch. Display geometry is
+cached and refreshed when the connected screens change. Measured switching
+time is about 35–75 ms in warmed-up tests, around 100 ms after idling, and
+160–220 ms for the first switch after a Hammerspoon reload. These are measured
+times, not a hard latency guarantee. A driver restart requires a new connection
+and can take longer. If a connection fails, the shortcut reports the error; retry after
+OpenTabletDriver is running. The standalone fallback still starts a new process
+each time and is slower.
 
 ## SlimBlade Pro presets
 

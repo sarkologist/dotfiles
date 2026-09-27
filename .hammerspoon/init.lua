@@ -186,7 +186,7 @@ local wacomScrollSourcePID = nil
 local wacomLastTapTime = 0
 local wacomDoubleTapInterval = 0.65
 local wacomDoubleTapInProgress = false
-local wacomDisplayToggleTask = nil
+wacomDisplay = require("wacom-display")
 
 local function openTabletDriverPID()
   local output, ok = hs.execute(
@@ -212,19 +212,7 @@ local function rounded(value)
 end
 
 local function toggleWacomDisplay()
-  if wacomDisplayToggleTask then return end
-  hs.alert.show("Switching Wacom display…")
-  wacomDisplayToggleTask = hs.task.new(
-    "/Users/sark/.local/bin/toggle-wacom-display",
-    function(exitCode)
-      if exitCode ~= 0 then hs.alert.show("Wacom display toggle failed") end
-      wacomDisplayToggleTask = nil
-    end
-  )
-  if not wacomDisplayToggleTask or not wacomDisplayToggleTask:start() then
-    wacomDisplayToggleTask = nil
-    hs.alert.show("Could not start Wacom display toggle")
-  end
+  wacomDisplay.toggle()
 end
 
 wacomScrollTap = hs.eventtap.new({
@@ -312,6 +300,7 @@ wacomScrollTap = hs.eventtap.new({
 end):start()
 
 slimbladeHandedness = require("slimblade")
+hs.shutdownCallback = function() wacomDisplay.stop() end
 
 -- All set
 hs.alert.show("Hammerspoon — input-device shortcuts enabled")
