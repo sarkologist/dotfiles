@@ -186,6 +186,7 @@ local wacomScrollSourcePID = nil
 local wacomLastTapTime = 0
 local wacomDoubleTapInterval = 0.65
 local wacomDoubleTapInProgress = false
+local wacomTipClickState = nil
 wacomDisplay = require("wacom-display")
 
 local function openTabletDriverPID()
@@ -198,6 +199,7 @@ end
 
 local function isOpenTabletDriverEvent(event, properties)
   local eventPID = event:getProperty(properties.eventSourceUnixProcessID)
+  if eventPID <= 0 then return false end
   if not wacomScrollSourcePID or eventPID ~= wacomScrollSourcePID then
     wacomScrollSourcePID = openTabletDriverPID()
   end
@@ -216,6 +218,8 @@ local function toggleWacomDisplay()
 end
 
 wacomScrollTap = hs.eventtap.new({
+  hs.eventtap.event.types.leftMouseDown,
+  hs.eventtap.event.types.leftMouseUp,
   hs.eventtap.event.types.otherMouseDown,
   hs.eventtap.event.types.otherMouseUp,
   hs.eventtap.event.types.mouseMoved,
@@ -225,6 +229,22 @@ wacomScrollTap = hs.eventtap.new({
 }, function(event)
   local eventType = event:getType()
   local properties = hs.eventtap.event.properties
+
+  -- OTD 0.6.7 creates a fresh CGEvent for each movement, losing the click
+  -- count on drags; it also clears that count on release after moving.
+  -- Keep the tip's click count throughout the gesture for macOS text selection.
+  if eventType == hs.eventtap.event.types.leftMouseDown
+      or eventType == hs.eventtap.event.types.leftMouseUp
+      or eventType == hs.eventtap.event.types.leftMouseDragged then
+    if isOpenTabletDriverEvent(event, properties) then
+      if eventType == hs.eventtap.event.types.leftMouseDown then
+        wacomTipClickState = math.max(1, event:getProperty(properties.mouseEventClickState))
+      end
+      event:setProperty(properties.mouseEventClickState, wacomTipClickState or 1)
+      if eventType == hs.eventtap.event.types.leftMouseUp then wacomTipClickState = nil end
+    end
+    if eventType ~= hs.eventtap.event.types.leftMouseDragged then return false end
+  end
 
   if eventType == hs.eventtap.event.types.otherMouseDown
       and event:getProperty(properties.mouseEventButtonNumber) == wacomScrollButtonNumber then

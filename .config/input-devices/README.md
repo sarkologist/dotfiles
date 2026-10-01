@@ -29,6 +29,8 @@ identifiers.
 - Absolute positioning, clipped to the selected display with aspect ratio
   locked.
 - Tablet rotation: 180 degrees.
+- Pen tip: left click; keep the tip touching the tablet while moving to drag or
+  select text.
 - Lower pen button: right click.
 - Upper pen button, held while moving the pen: pixel scrolling; pointer movement
   is suppressed during the gesture.
@@ -37,6 +39,12 @@ identifiers.
 
 The Hammerspoon event filter accepts only events emitted by OpenTabletDriver, so
 the pen gesture does not consume SlimBlade button chords.
+
+Hammerspoon preserves the tip's click count through drag and release events.
+OpenTabletDriver 0.6.7 creates a fresh macOS event for each movement without
+restoring that count, and clears it on release after movement. The correction
+applies only to OpenTabletDriver events, including double-click-and-drag
+selection. Other pointing devices pass through unchanged.
 
 The display shortcut keeps one OpenTabletDriver console process running and
 reads the live mapping and rotation before each switch. Display geometry is
