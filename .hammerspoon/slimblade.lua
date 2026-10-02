@@ -9,6 +9,7 @@ local presets = {
 
 local busy = false
 local usbTimer = nil
+local reconcilePending = false
 
 local function attribute(element, name)
   local ok, value = pcall(function() return element:attributeValue(name) end)
@@ -49,7 +50,8 @@ local function waitFor(label, finder, callback, onFailure, timeout)
     local ok, result = pcall(finder)
     if ok and result then
       timer:stop()
-      callback(result)
+      local succeeded, err = pcall(callback, result)
+      if not succeeded then onFailure("Failed at " .. label .. ": " .. tostring(err)) end
     elseif hs.timer.secondsSinceEpoch() - started >= (timeout or 6) then
       timer:stop()
       onFailure("Timed out waiting for " .. label)
@@ -124,12 +126,18 @@ function M.set(handedness, options)
 
   local function finish(message, succeeded)
     busy = false
+    M.lastError = not succeeded and message or nil
+    print(message)
     if succeeded then hs.settings.set(stateKey, handedness) end
     if previousBundleID and previousBundleID ~= appBundleID then
       local app = hs.application.get(previousBundleID)
       if app then app:activate(true) end
     end
     hs.alert.show(message)
+    if reconcilePending then
+      reconcilePending = false
+      hs.timer.doAfter(0.2, M.reconcile)
+    end
   end
 
   local function fail(message)
@@ -137,7 +145,10 @@ function M.set(handedness, options)
   end
 
   hs.application.launchOrFocusByBundleID(appBundleID)
-  waitFor("SteerMouse", mainWindow, function(window)
+  waitFor("SteerMouse", function()
+    local app = hs.application.frontmostApplication()
+    if app and app:bundleID() == appBundleID then return mainWindow() end
+  end, function(window)
     local device = descendants(window, function(element)
       return matches(element, "AXButton", "SlimBlade Pro")
     end)
@@ -191,75 +202,107 @@ function M.set(handedness, options)
             return matches(element, "AXSheet", nil, "open-panel")
           end)
         end, function()
-          hs.eventtap.keyStroke({"cmd", "shift"}, "g", 0)
+          local _, app = appElement()
+          app:activate(true)
+          local lastGoToAttempt = 0
           waitFor("Go to Folder field", function()
             local root = appElement()
-            return descendants(root, function(element)
+            local field = descendants(root, function(element)
               return matches(element, "AXTextField", nil, "PathTextField")
             end)
+            if field then return field end
+            -- The picker can exist before it accepts keyboard shortcuts.
+            local now = hs.timer.secondsSinceEpoch()
+            if now - lastGoToAttempt >= 0.5 then
+              lastGoToAttempt = now
+              app:activate(true)
+              hs.eventtap.keyStroke({"cmd", "shift"}, "g", 50000)
+            end
           end, function(pathField)
-            pathField:setAttributeValue("AXValue", presets[handedness])
-            hs.eventtap.keyStroke({}, "return", 0)
+            -- AXValue alone does not reliably commit edits in macOS's Go To
+            -- sheet. Type into the focused field and wait for the edit to land.
+            pathField:setAttributeValue("AXFocused", true)
+            hs.eventtap.keyStroke({"cmd"}, "a", 50000)
+            hs.eventtap.keyStrokes(presets[handedness])
+            waitFor("entered preset path", function()
+              return attribute(pathField, "AXValue") == presets[handedness] and true or nil
+            end, function()
+              hs.eventtap.keyStroke({}, "return", 50000)
 
-            waitFor("selected preset", function()
-              local root = appElement()
-              return descendants(root, function(element)
-                return matches(element, "AXButton", "Open", "OKButton")
-                  and attribute(element, "AXEnabled") ~= false
-              end)
-            end, function(openButton)
-              if not press(openButton) then
-                fail("could not open the preset")
-                return
-              end
-
-              waitFor("replacement confirmation", function()
+              waitFor("selected preset", function()
                 local root = appElement()
-                local prompt = descendants(root, function(element)
-                  local value = attribute(element, "AXValue")
-                  return type(value) == "string"
-                    and value:find("replace.*Default") ~= nil
+                if descendants(root, function(element)
+                  return matches(element, "AXTextField", nil, "PathTextField")
+                end) then return nil end
+                local picker = descendants(root, function(element)
+                  return matches(element, "AXSheet", nil, "open-panel")
                 end)
-                if not prompt then return nil end
-                local dialog = attribute(prompt, "AXTopLevelUIElement")
-                return descendants(dialog, function(element)
-                  return matches(element, "AXButton", "OK", "action-button--998")
+                local filename = presets[handedness]:match("[^/]+$")
+                local selected = descendants(picker, function(element)
+                  if attribute(element, "AXSelected") ~= true then return false end
+                  return descendants(element, function(child)
+                    return attribute(child, "AXValue") == filename
+                  end) ~= nil
                 end)
-              end, function(confirmButton)
-                if not press(confirmButton) then
-                  fail("could not confirm replacement")
+                if not selected then return nil end
+                return descendants(picker, function(element)
+                  return matches(element, "AXButton", "Open", "OKButton")
+                    and attribute(element, "AXEnabled") ~= false
+                end)
+              end, function(openButton)
+                if not press(openButton) then
+                  fail("could not open the preset")
                   return
                 end
 
-                waitFor("application settings confirmation", function()
+                waitFor("replacement confirmation", function()
                   local root = appElement()
-                  local action = descendants(root, function(element)
-                    return matches(element, "AXMenuButton", nil, nil, "action")
+                  local prompt = descendants(root, function(element)
+                    local value = attribute(element, "AXValue")
+                    return type(value) == "string"
+                      and value:find("replace.*Default") ~= nil
                   end)
-                  local sheet = action and attribute(action, "AXTopLevelUIElement")
-                  return descendants(sheet, function(element)
-                    return matches(element, "AXButton", "OK")
+                  if not prompt then return nil end
+                  local dialog = attribute(prompt, "AXTopLevelUIElement")
+                  return descendants(dialog, function(element)
+                    return matches(element, "AXButton", "OK", "action-button--998")
                   end)
-                end, function(okButton)
-                  if not press(okButton) then
-                    fail("could not save the imported preset")
+                end, function(confirmButton)
+                  if not press(confirmButton) then
+                    fail("could not confirm replacement")
                     return
                   end
 
-                  waitFor("SteerMouse main window", mainWindow, function(windowNow)
-                    local buttonsTab = descendants(windowNow, function(element)
-                      return matches(element, "AXRadioButton", "Buttons")
+                  waitFor("application settings confirmation", function()
+                    local root = appElement()
+                    local action = descendants(root, function(element)
+                      return matches(element, "AXMenuButton", nil, nil, "action")
                     end)
-                    if attribute(buttonsTab, "AXValue") ~= 1 and not press(buttonsTab) then
-                      fail("could not verify the imported buttons")
+                    local sheet = action and attribute(action, "AXTopLevelUIElement")
+                    return descendants(sheet, function(element)
+                      return matches(element, "AXButton", "OK")
+                    end)
+                  end, function(okButton)
+                    if not press(okButton) then
+                      fail("could not save the imported preset")
                       return
                     end
 
-                    waitFor("updated buttons", function()
-                      local expected = handedness == "right" and "Primary Click" or "Secondary Click"
-                      return rowAction(mainWindow(), "Bottom Left") == expected and true or nil
-                    end, function()
-                      finish("SlimBlade: " .. handedness .. " hand", true)
+                    waitFor("SteerMouse main window", mainWindow, function(windowNow)
+                      local buttonsTab = descendants(windowNow, function(element)
+                        return matches(element, "AXRadioButton", "Buttons")
+                      end)
+                      if attribute(buttonsTab, "AXValue") ~= 1 and not press(buttonsTab) then
+                        fail("could not verify the imported buttons")
+                        return
+                      end
+
+                      waitFor("updated buttons", function()
+                        local expected = handedness == "right" and "Primary Click" or "Secondary Click"
+                        return rowAction(mainWindow(), "Bottom Left") == expected and true or nil
+                      end, function()
+                        finish("SlimBlade: " .. handedness .. " hand", true)
+                      end, fail)
                     end, fail)
                   end, fail)
                 end, fail)
@@ -279,6 +322,7 @@ function M.toggle()
 end
 
 function M.reconcile()
+  if busy then reconcilePending = true; return false end
   return M.set(wacomAttached() and "left" or "right")
 end
 

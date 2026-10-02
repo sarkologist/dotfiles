@@ -108,6 +108,11 @@ setting, so settings for Anki, Chrome, and other individual applications are
 left alone. SteerMouse briefly opens during a switch, then focus returns to the
 application you were using.
 
+The importer waits until the file picker accepts keyboard input and verifies
+that the requested preset is selected before opening it. If the Wacom connection
+changes during an import, it rechecks the USB state afterward rather than dropping
+the change. Import failures are reported on screen and in the Hammerspoon console.
+
 ## Restore
 
 1. Install OpenTabletDriver, Hammerspoon, and SteerMouse.
